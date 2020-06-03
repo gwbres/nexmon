@@ -1,0 +1,17 @@
+# host env
+HOST_CC = gcc
+HOST_CXX = g++
+HOST_AR = ar
+
+# target env
+BUILDROOT_BUILD_DIR = $(BUILDROOT_DIR)/output/build
+BUILDROOT_HOST_DIR = $(BUILDROOT_DIR)/output/host
+BUILDROOT_KERNEL = linux-custom
+
+TARGET_CC = $(CROSS_COMPILE)gcc
+TARGET_CXX = $(CROSS_COMPILE)g++
+TARGET_AR = $(CROSS_COMPILE)ar
+TARGET_OBJCOPY = $(CROSS_COMPILE)objcopy
+
+# Make tool
+Q=@
