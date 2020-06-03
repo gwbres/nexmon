@@ -1,10 +1,21 @@
+-include $(NEXMON_ROOT)/Makefile.in
+
+TARGET_PLUGIN_DIR = $(shell $(TARGET_CXX) -print-file-name=plugin)/include
+
+CFLAGS = -std=c++11
+CFLAGS += -fPIC
+CFLAGS += -fno-rtti 
+CFLAGS += -I$(TARGET_PLUGIN_DIR)
+CFLAGS += -Wall 
+CFLAGS += -Wno-literal-suffix
+
 all: nexmon.so
 
 nexmon.so: nexmon.o
-	g++ -m32 -shared -o $@ $<
+	$(HOST_CXX) -shared -o $@ $^
 
 nexmon.o: nexmon.c
-	g++ -std=c++11 -Wall -fno-rtti -Wno-literal-suffix -m32 -fPIC -I../gcc-arm-none-eabi-5_4-2016q2-linux-x86/lib/gcc/arm-none-eabi/5.4.1/plugin/include -c -o $@ $<
+	$(HOST_CXX) $(CFLAGS) -c -o $@ $^
 
 clean:
 	rm -f *.o *.so
