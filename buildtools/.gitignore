@@ -1,4 +1,5 @@
 *.pyc
 *.o
+*.so
 flash_patch_extractor/fpext
 ucode_extractor/ucodeext
