@@ -5,3 +5,6 @@ log
 gen
 *.o
 *.elf
+*.ko
+*.symvers
+*.order
