@@ -1,4 +1,9 @@
+#if __GNUC__ >=6
 #include <gcc-plugin.h>
+#else
+#include <plugin.h>
+#endif
+
 #include <tree.h>
 #include <print-tree.h>
 #include <stdio.h>
