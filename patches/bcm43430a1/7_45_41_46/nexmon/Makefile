@@ -1,5 +1,7 @@
 SHELL = /bin/bash
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+
+include $(NEXMON_ROOT)/Makefile.in
 include ../version.mk
 include $(FW_PATH)/definitions.mk
 
@@ -39,36 +41,24 @@ init: FORCE
 	$(Q)make -s -f $(NEXMON_ROOT)/patches/common/header.mk
 	$(Q)mkdir -p obj gen log
 
-brcmfmac.ko: check-nexmon-setup-env
-ifeq ($(shell uname -m),$(filter $(shell uname -m), armv6l armv7l))
-ifeq ($(findstring 4.14,$(shell uname -r)),4.14)
+brcmfmac.ko:
 	@printf "\033[0;31m  BUILDING DRIVER for kernel 4.14\033[0m brcmfmac_4.14.y-nexmon/brcmfmac.ko (details: log/driver.log)\n" $@
-	$(Q)make -C /lib/modules/$(shell uname -r)/build M=$$PWD/brcmfmac_4.14.y-nexmon -j2 >log/driver.log
-else ifeq ($(findstring 4.9,$(shell uname -r)),4.9)
-	@printf "\033[0;31m  BUILDING DRIVER for kernel 4.9\033[0m brcmfmac_kernel49/brcmfmac.ko (details: log/driver.log)\n" $@
-	$(Q)make -C /lib/modules/$(shell uname -r)/build M=$$PWD/brcmfmac_kernel49 -j2 >log/driver.log
-else ifeq ($(findstring 4.4,$(shell uname -r)),4.4)
-	@printf "\033[0;31m  BUILDING DRIVER for kernel 4.4\033[0m brcmfmac_kernel44/brcmfmac.ko (details: log/driver.log)\n" $@
-	$(Q)make -C /lib/modules/$(shell uname -r)/build M=$$PWD/brcmfmac_kernel44 -j2 >log/driver.log
-endif
-else
-	$(warning Warning: Driver can not be compiled on this platform, execute the make command on a raspberry pi)
-endif
+	$(Q)make -C $(TARGET_KSRCS) M=$$PWD/brcmfmac_4.19.y-nexmon -j2 >log/driver.log
 
 obj/%.o: src/%.c
 	@printf "\033[0;31m  COMPILING\033[0m %s => %s (details: log/compiler.log)\n" $< $@
 	$(Q)cat gen/nexmon.pre 2>>log/error.log | gawk '{ if ($$3 != "$@") print; }' > tmp && mv tmp gen/nexmon.pre
-	$(Q)$(CC)gcc $(CFLAGS) -c $< -o $@ >>log/compiler.log
+	$(Q)$(TARGET_CC) $(CFLAGS) -c $< -o $@ >>log/compiler.log
 
 obj/%.o: $(NEXMON_ROOT)/patches/common/%.c
 	@printf "\033[0;31m  COMPILING\033[0m %s => %s (details: log/compiler.log)\n" $< $@
 	$(Q)cat gen/nexmon.pre 2>>log/error.log | gawk '{ if ($$3 != "$@") print; }' > tmp && mv tmp gen/nexmon.pre
-	$(Q)$(CC)gcc $(CFLAGS) -c $< -o $@ >>log/compiler.log
+	$(Q)$(TARGET_CC) $(CFLAGS) -c $< -o $@ >>log/compiler.log
 
 obj/%.o: $(FW_PATH)/%.c
 	@printf "\033[0;31m  COMPILING\033[0m %s => %s (details: log/compiler.log)\n" $< $@
 	$(Q)cat gen/nexmon.pre 2>>log/error.log | gawk '{ if ($$3 != "$@") print; }' > tmp && mv tmp gen/nexmon.pre
-	$(Q)$(CC)gcc $(CFLAGS) -c $< -o $@ >>log/compiler.log
+	$(Q)$(TARGET_CC) $(CFLAGS) -c $< -o $@ >>log/compiler.log
 
 gen/nexmon.ld: $(OBJS)
 	@printf "\033[0;31m  GENERATING LINKER FILE\033[0m gen/nexmon.pre => %s\n" $@
@@ -113,14 +103,14 @@ gen/memory.ld: $(FW_PATH)/definitions.mk
 
 gen/patch.elf: patch.ld gen/nexmon.ld gen/flashpatches.ld gen/memory.ld $(OBJS)
 	@printf "\033[0;31m  LINKING OBJECTS\033[0m => %s (details: log/linker.log, log/linker.err)\n" $@
-	$(Q)$(CC)ld -T $< -o $@ --gc-sections --print-gc-sections -M >>log/linker.log 2>>log/linker.err
+	$(Q)$(TARGET_LD) -T $< -o $@ --gc-sections --print-gc-sections -M >>log/linker.log 2>>log/linker.err
 
 $(RAM_FILE): init gen/patch.elf $(FW_PATH)/$(RAM_FILE) gen/nexmon.mk gen/flashpatches.mk
 	$(Q)cp $(FW_PATH)/$(RAM_FILE) $@
 	@printf "\033[0;31m  APPLYING FLASHPATCHES\033[0m gen/flashpatches.mk => %s (details: log/flashpatches.log)\n" $@
-	$(Q)make -f gen/flashpatches.mk >>log/flashpatches.log 2>>log/flashpatches.log
+	$(Q)make CC=$(CROSS_COMPILE) -f gen/flashpatches.mk >>log/flashpatches.log 2>>log/flashpatches.log
 	@printf "\033[0;31m  APPLYING PATCHES\033[0m gen/nexmon.mk => %s (details: log/patches.log)\n" $@
-	$(Q)make -f gen/nexmon.mk >>log/patches.log 2>>log/flashpatches.log
+	$(Q)make CC=$(CROSS_COMPILE) -f gen/nexmon.mk >>log/patches.log 2>>log/flashpatches.log
 
 gen/dummy.idc: $(RAM_FILE)
 	@printf "\033[0;31m  GENERATING IDC FILE\033[0m gen/nexmon.pre => %s\n" $@
